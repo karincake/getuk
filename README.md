@@ -33,7 +33,7 @@ Helper package for package GORM, mostly related to scopes.
             Status        Status `json:"status"`
             // pagination
             Page         int     `json:"page"`
-            PageSize     int     `json:"page_size"`
+            PageSize     int     `json:"pagesize"`
             // if you don't want pagination use this instead
             NoPagination bool
         }
@@ -42,9 +42,9 @@ Helper package for package GORM, mostly related to scopes.
         // note that most of the time the variables is coming from query string param
         filter := SampleFilter{
             Title: title, // from variable title
-            Title_Opt: "left" // produces: "Title LIKE '....%'",
+            Title_Opt: "left", // produces: "Title LIKE '....%'",
             Page: page, // from variable page
-            PageSize: 10,
+            PageSize: pagesize, // from variable pagesize
             // for no pagination case
             NoPagination: true,
         }
