@@ -21,7 +21,7 @@ func stringInSlice(s string, a []string) bool {
 // allowed option, the default is without like and between
 //
 //	[]string{"=", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right"}
-func optionString(col, option string, value interface{}) (whereString string, valueFinal interface{}) {
+func optionString(col, option, tableNameEscapeChar string, value interface{}) (whereString string, valueFinal interface{}) {
 	symbol := "="
 	valueFinal = value
 	switch option {
@@ -53,11 +53,11 @@ func optionString(col, option string, value interface{}) (whereString string, va
 	}
 
 	if symbol == "BETWEEN" {
-		whereString = fmt.Sprintf("\"%s\" %s ? AND ?", col, symbol)
+		whereString = fmt.Sprintf("%s%s%s %s ? AND ?", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
 	} else if symbol == "IN" {
-		whereString = fmt.Sprintf("\"%s\" %s ?", col, symbol)
+		whereString = fmt.Sprintf("%s%s%s %s ?", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
 	} else {
-		whereString = fmt.Sprintf("\"%s\" %s ?", col, symbol)
+		whereString = fmt.Sprintf("%s%s%s %s ?", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
 	}
 	return
 }

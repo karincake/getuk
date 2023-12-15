@@ -23,6 +23,12 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			panic("input must be a struct")
 		}
 
+		tableNameEscapeChar := "`"
+		dialectorName := db.Dialector.Name()
+		if dialectorName == "postgres" {
+			tableNameEscapeChar = "\""
+		}
+
 		iT := iV.Type() // input type
 		for i := 0; i < iV.NumField(); i++ {
 			iTF := iT.Field(i) // input type of the current field
@@ -51,9 +57,15 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			// check opt
 			vOpt := "eq"
 			o := iV.FieldByName(iTF.Name + "_Opt") // option
-			if o.IsValid() && o.Kind() == reflect.Ptr && o.Elem().IsValid() {
-				o = o.Elem()
-				vOpt = o.Interface().(string)
+			if o.IsValid() {
+				if o.Kind() == reflect.Ptr && o.Elem().IsValid() {
+					o = o.Elem()
+					vOpt = o.Interface().(string)
+				} else if o.Kind() != reflect.Ptr {
+					vOpt = o.Interface().(string)
+				} else {
+					// nothing to do if its invalid pointer
+				}
 			}
 			opts := []string{"eq", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right", "between", "in"}
 			if ok := stringInSlice(vOpt, opts); !ok {
@@ -73,7 +85,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			}
 
 			// add where query
-			whereString, value := optionString(refSource, vOpt, iVF.Interface())
+			whereString, value := optionString(refSource, vOpt, tableNameEscapeChar, iVF.Interface())
 			if vOpt != "between" {
 				db.Where(whereString, value)
 			} else {
