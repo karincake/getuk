@@ -5,20 +5,21 @@ import (
 	"reflect"
 	"strings"
 
-	// gi "github.com/juliangruber/go-intersect"
-
 	"gorm.io/gorm"
 )
 
 // Filters based on query parameters
 func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		rt := reflect.TypeOf(input)
-		if rt.Kind() != reflect.Struct {
-			return db
-		}
+		// rt := reflect.TypeOf(input)
+		// if rt.Kind() != reflect.Struct {
+		// 	return db
+		// }
 
 		iV := reflect.ValueOf(input) // input value
+		for iV.Kind() == reflect.Pointer {
+			iV = iV.Elem()
+		}
 		if iV.Kind() != reflect.Struct {
 			panic("input must be a struct")
 		}
@@ -39,6 +40,29 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 
 			// skip option and pagination related
 			if opt == "_Opt" || iTF.Name == "Page" || iTF.Name == "PageSize" || iTF.Name == "NoPagination" {
+				continue
+			}
+
+			// skip
+			skip := false
+			refSource := iTF.Name
+			ghTagsRaw := iTF.Tag.Get("gormhelper")
+			ghTags := strings.Split(ghTagsRaw, ";")
+			for idx := range ghTags {
+				vals := strings.Split(ghTags[idx], "=")
+				if len(vals) == 2 {
+					if vals[0] == "refsource" {
+						refSource = vals[1]
+						break
+					}
+				} else {
+					if vals[0] == "skip" {
+						skip = true
+						break
+					}
+				}
+			}
+			if skip {
 				continue
 			}
 
@@ -72,20 +96,14 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 				db.AddError(fmt.Errorf("field %s: opt undefined", iTF.Name))
 			}
 
-			// check source if avaibale
-			refSource := iTF.Tag.Get("refsource")
-			if refSource != "" {
-				refSource = strings.Replace(refSource, ".", "\".\"", -1)
-			} else {
-				refSource = iTF.Name
-			}
-
 			if iTF.Type.String() == "*[]string" {
 				vOpt = "in"
 			}
 
 			// add where query
 			whereString, value := optionString(refSource, vOpt, tableNameEscapeChar, iVF.Interface())
+			fmt.Println("opt", iTF.Name, opt, whereString)
+			fmt.Println("opt", opt, whereString)
 			if vOpt != "between" {
 				db.Where(whereString, value)
 			} else {
@@ -105,6 +123,9 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 func Paginate(input interface{}, p *Pagination) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		iV := reflect.ValueOf(input) // input value
+		for iV.Kind() == reflect.Pointer {
+			iV = iV.Elem()
+		}
 		if iV.Kind() != reflect.Struct {
 			panic("input must be a struct")
 		}
@@ -178,7 +199,7 @@ func Paginate(input interface{}, p *Pagination) func(db *gorm.DB) *gorm.DB {
 			if p.PageSize >= 250 {
 				p.PageSize = 250
 			}
-			if p.PageSize <= 5 { // bit bouncing
+			if p.PageSize <= 0 {
 				p.PageSize = 10
 			}
 		} else {
@@ -187,4 +208,133 @@ func Paginate(input interface{}, p *Pagination) func(db *gorm.DB) *gorm.DB {
 		offset := (p.Page - 1) * int(p.PageSize)
 		return db.Offset(offset).Limit(p.PageSize)
 	}
+}
+
+// Flatten a reference with tricky workaround due to Gorm's nature
+// that doesn't allow multiple times call for Select() function.
+// The trick is to use a string pointer that contains `SELECT` clause
+// for main table source. It will passed to the function to be updated.
+// In case an error occured while calling `COUNT`, please avoid calling `SELECT`
+// prior the `COUNT`
+func FlatJoin(selectStr *string, opt FlatJoinOpt) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if selectStr == nil {
+			panic("variable selectStr must be a valid pointer address")
+		}
+		if opt.Ref == "" {
+			panic("opt's 'Ref' is for reference table to be joined, can not be empty")
+		}
+		if opt.Src == "" {
+			panic("opt's 'Src' is for source table, can not be empty")
+		}
+		if len(opt.Cols) == 0 {
+			panic("opt's `Cols` is for columns to be selected from reference table, can not be empty")
+		}
+
+		dialector := db.Dialector.Name()
+		qt := "`"
+		if dialector == "postgres" {
+			qt = "\""
+		}
+
+		if opt.Mode == "" {
+			opt.Mode = JMInner
+		}
+
+		fRefCol := "Id"
+		if opt.RefCol != "" {
+			fRefCol = opt.RefCol
+		}
+
+		fSrcFkCol := opt.Ref + "_" + fRefCol
+		if opt.SrcFkCol != "" {
+			fSrcFkCol = opt.SrcFkCol
+		}
+
+		fPrefix := opt.Ref + "_"
+		if opt.Prefix != "" && opt.Prefix != "{NOPREFIX}" {
+			fPrefix = opt.Prefix
+		} else if opt.Prefix == "{NOPREFIX}" {
+			fPrefix = ""
+		}
+
+		fSelectStr := ""
+		for idx := range opt.Cols {
+			fSelectStr += fSelectStr + fmt.Sprintf("%v%v%v.%v%v%v %v%v%v, ", qt, opt.Ref, qt, qt, opt.Cols[idx], qt, qt, fPrefix+opt.Cols[idx], qt)
+		}
+		fSelectStr = fSelectStr[:len(fSelectStr)-2]
+
+		if *selectStr == "" {
+			*selectStr = fSelectStr
+		} else {
+			fSelectStr = *selectStr + ", " + fSelectStr
+			*selectStr = fSelectStr
+		}
+
+		clause := ""
+		if opt.Clause != "" {
+			clause = " AND " + clause
+		}
+
+		return db.Joins(fmt.Sprintf("%v %v%v%v ON %v%v%v.%v%v%v = %v%v%v.%v%v%v %v", opt.Mode, qt, opt.Ref, qt, qt, opt.Src, qt, qt, fSrcFkCol, qt, qt, opt.Ref, qt, qt, fRefCol, qt, clause))
+	}
+}
+
+// Procedural version of FlatJoinProc
+func FlatJoinProc(db *gorm.DB, selectStr *string, opt FlatJoinOpt) *gorm.DB { // *gorm.DB
+	if selectStr == nil {
+		panic("variable selectStr must be a valid pointer address")
+	}
+	if opt.Ref == "" {
+		panic("opt's 'Ref' can not be an empty string")
+	}
+	if opt.Src == "" {
+		panic("opt's 'Src' can not be an empty string")
+	}
+	if len(opt.Cols) == 0 {
+		panic("opt's `Cols` can not be an empty array")
+	}
+	dialector := db.Dialector.Name()
+
+	qt := "`"
+	if dialector == "postgres" {
+		qt = "\""
+	}
+
+	fRefCol := "Id"
+	if opt.RefCol != "" {
+		fRefCol = opt.RefCol
+	}
+
+	fSrcFkCol := opt.Ref + "_" + fRefCol
+	if opt.SrcFkCol != "" {
+		fSrcFkCol = opt.SrcFkCol
+	}
+
+	fPrefix := opt.Ref + "_"
+	if opt.Prefix != "" && opt.Prefix != "{NOPREFIX}" {
+		fPrefix = opt.Prefix
+	} else if opt.Prefix == "{NOPREFIX}" {
+		fPrefix = ""
+	}
+
+	fSelectStr := ""
+	for idx := range opt.Cols {
+		fSelectStr += fSelectStr + fmt.Sprintf("%v%v%v.%v%v%v %v%v%v, ", qt, opt.Ref, qt, qt, opt.Cols[idx], qt, qt, fPrefix+opt.Cols[idx], qt)
+	}
+	fSelectStr = fSelectStr[:len(fSelectStr)-2]
+
+	if *selectStr == "" {
+		*selectStr = fSelectStr
+	} else {
+		fSelectStr = *selectStr + ", " + fSelectStr
+		*selectStr = fSelectStr
+	}
+
+	clause := ""
+	if opt.Clause != "" {
+		clause = " AND " + clause
+	}
+
+	return db.Joins(fmt.Sprintf("%v %v%v%v ON %v%v%v.%v%v%v = %v%v%v.%v%v%v %v", opt.Mode, qt, opt.Ref, qt, qt, opt.Src, qt, qt, fSrcFkCol, qt, qt, opt.Ref, qt, qt, fRefCol, qt, clause))
 }
