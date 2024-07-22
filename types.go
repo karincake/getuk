@@ -20,10 +20,10 @@ type DateModel struct {
 
 type Mode string
 type FlatJoinOpt struct {
-	Ref      string
-	RefCol   string
 	Src      string
 	SrcFkCol string
+	Ref      string
+	RefCol   string
 	Mode     Mode
 	Clause   string
 	Prefix   string
