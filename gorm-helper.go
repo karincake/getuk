@@ -139,30 +139,11 @@ func Paginate(input interface{}, p *Pagination) func(db *gorm.DB) *gorm.DB {
 			}
 		}
 		if fP.IsValid() {
-			// in case used wrong type, help them
 			myKind := fP.Type().Kind()
 			if myKind == reflect.Int {
 				p.Page = fP.Interface().(int)
-			} else if myKind == reflect.Int8 {
-				p.Page = int(fP.Interface().(int8))
-			} else if myKind == reflect.Int16 {
-				p.Page = int(fP.Interface().(int16))
-			} else if myKind == reflect.Int32 {
-				p.Page = int(fP.Interface().(int32))
-			} else if myKind == reflect.Int64 {
-				p.Page = int(fP.Interface().(int64))
-			} else if myKind == reflect.Uint {
-				p.Page = int(fP.Interface().(uint))
-			} else if myKind == reflect.Uint8 {
-				p.Page = int(fP.Interface().(uint8))
-			} else if myKind == reflect.Uint16 {
-				p.Page = int(fP.Interface().(uint16))
-			} else if myKind == reflect.Uint32 {
-				p.Page = int(fP.Interface().(uint32))
-			} else if myKind == reflect.Uint64 {
-				p.Page = int(fP.Interface().(uint64))
 			} else {
-				p.Page = 1 // fatal wrong type
+				panic("property 'Page' must have int type ")
 			}
 			if p.Page <= 0 {
 				p.Page = 1
@@ -171,33 +152,14 @@ func Paginate(input interface{}, p *Pagination) func(db *gorm.DB) *gorm.DB {
 			p.Page = 1
 		}
 		if fPS.IsValid() {
-			// in case used wrong type, help them
 			myKind := fPS.Type().Kind()
 			if myKind == reflect.Int {
 				p.PageSize = fPS.Interface().(int)
-			} else if myKind == reflect.Int8 {
-				p.PageSize = int(fPS.Interface().(int8))
-			} else if myKind == reflect.Int16 {
-				p.PageSize = int(fPS.Interface().(int16))
-			} else if myKind == reflect.Int32 {
-				p.PageSize = int(fPS.Interface().(int32))
-			} else if myKind == reflect.Int64 {
-				p.PageSize = int(fPS.Interface().(int64))
-			} else if myKind == reflect.Uint {
-				p.PageSize = int(fPS.Interface().(uint))
-			} else if myKind == reflect.Uint8 {
-				p.PageSize = int(fPS.Interface().(uint8))
-			} else if myKind == reflect.Uint16 {
-				p.PageSize = int(fPS.Interface().(uint16))
-			} else if myKind == reflect.Uint32 {
-				p.PageSize = int(fPS.Interface().(uint32))
-			} else if myKind == reflect.Uint64 {
-				p.PageSize = int(fPS.Interface().(uint64))
 			} else {
-				p.PageSize = 10 // fatal wrong type
+				panic("property 'PageSize' must have int type ")
 			}
-			if p.PageSize >= 250 {
-				p.PageSize = 250
+			if p.PageSize >= 1000 {
+				p.PageSize = 1000
 			}
 			if p.PageSize <= 0 {
 				p.PageSize = 10
@@ -273,7 +235,7 @@ func FlatJoin(selectStr *string, opt FlatJoinOpt) func(db *gorm.DB) *gorm.DB {
 
 		clause := ""
 		if opt.Clause != "" {
-			clause = " AND " + clause
+			clause = " AND " + opt.Clause
 		}
 
 		return db.Joins(fmt.Sprintf("%v %v%v%v ON %v%v%v.%v%v%v = %v%v%v.%v%v%v %v", opt.Mode, qt, opt.Ref, qt, qt, opt.Src, qt, qt, fSrcFkCol, qt, qt, opt.Ref, qt, qt, fRefCol, qt, clause))
