@@ -39,7 +39,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			}
 
 			// skip option and pagination related
-			if opt == "_Opt" || iTF.Name == "Page" || iTF.Name == "PageSize" || iTF.Name == "NoPagination" {
+			if opt == "_Opt" || iTF.Name == "PageNumber" || iTF.Name == "PageSize" || iTF.Name == "NoPagination" {
 				continue
 			}
 
@@ -130,9 +130,9 @@ func Paginate(input interface{}, p *Pagination) func(db *gorm.DB) *gorm.DB {
 			panic("input must be a struct")
 		}
 		// field pagination
-		fP := iV.FieldByName("Page")
+		fP := iV.FieldByName("PageNumber")
 		fPS := iV.FieldByName("PageSize")
-		fNP := iV.FieldByName("NoPagination")
+		fNP := iV.FieldByName("PageNoLimit")
 		if fNP.IsValid() {
 			if fNP.Type().Kind() == reflect.Bool && bool(fNP.Interface().(bool)) {
 				return db
@@ -141,15 +141,15 @@ func Paginate(input interface{}, p *Pagination) func(db *gorm.DB) *gorm.DB {
 		if fP.IsValid() {
 			myKind := fP.Type().Kind()
 			if myKind == reflect.Int {
-				p.Page = fP.Interface().(int)
+				p.PageNumber = fP.Interface().(int)
 			} else {
-				panic("property 'Page' must have int type ")
+				panic("property 'PageNumber' must have int type ")
 			}
-			if p.Page <= 0 {
-				p.Page = 1
+			if p.PageNumber <= 0 {
+				p.PageNumber = 1
 			}
 		} else {
-			p.Page = 1
+			p.PageNumber = 1
 		}
 		if fPS.IsValid() {
 			myKind := fPS.Type().Kind()
@@ -167,7 +167,7 @@ func Paginate(input interface{}, p *Pagination) func(db *gorm.DB) *gorm.DB {
 		} else {
 			p.PageSize = 10
 		}
-		offset := (p.Page - 1) * int(p.PageSize)
+		offset := (p.PageNumber - 1) * int(p.PageSize)
 		return db.Offset(offset).Limit(p.PageSize)
 	}
 }
