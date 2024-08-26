@@ -7,9 +7,9 @@ import (
 )
 
 type Pagination struct {
-	Page         int  `json:"page"`
-	PageSize     int  `json:"page_size"`
-	NoPagination bool `json:"no_pagination"`
+	PageNumber  int  `json:"page-number"`
+	PageSize    int  `json:"page-size"`
+	PageNoLimit bool `json:"page-no-limit"`
 }
 
 type DateModel struct {
