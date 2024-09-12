@@ -102,8 +102,6 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 
 			// add where query
 			whereString, value := optionString(refSource, vOpt, tableNameEscapeChar, iVF.Interface())
-			fmt.Println("opt", iTF.Name, opt, whereString)
-			fmt.Println("opt", opt, whereString)
 			if vOpt != "between" {
 				db.Where(whereString, value)
 			} else {
