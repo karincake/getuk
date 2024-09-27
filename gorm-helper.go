@@ -3,6 +3,7 @@ package getuk
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"gorm.io/gorm"
@@ -91,7 +92,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 					// nothing to do if its invalid pointer
 				}
 			}
-			opts := []string{"eq", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right", "between", "in"}
+			opts := []string{"eq", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right", "between", "in-string", "in-int", "in-float"}
 			if ok := stringInSlice(vOpt, opts); !ok {
 				db.AddError(fmt.Errorf("field %s: opt undefined", iTF.Name))
 			}
@@ -102,14 +103,38 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 
 			// add where query
 			whereString, value := optionString(refSource, vOpt, tableNameEscapeChar, iVF.Interface())
-			if vOpt != "between" {
-				db.Where(whereString, value)
-			} else {
+			if vOpt == "between" {
 				valueString := iVF.String()
 				values := strings.Split(valueString, ",")
 				if len(values) == 2 {
 					db.Where(whereString, values[0], values[1])
 				}
+			} else if vOpt == "in-string" {
+				db.Where(whereString, strings.Split(value.(string), ","))
+			} else if vOpt == "in-int" {
+				strNumbers := strings.Split(value.(string), ",")
+				numbers := make([]int, len(strNumbers))
+				for idx := range strNumbers {
+					number, err := strconv.Atoi(strNumbers[idx])
+					if err != nil {
+						panic("input must be a struct")
+					}
+					numbers = append(numbers, number)
+				}
+				db.Where(whereString, numbers)
+			} else if vOpt == "in-float" {
+				strNumbers := strings.Split(value.(string), ",")
+				numbers := make([]float64, len(strNumbers))
+				for idx := range strNumbers {
+					number, err := strconv.ParseFloat(strNumbers[idx], 64)
+					if err != nil {
+						panic("input must be a struct")
+					}
+					numbers = append(numbers, number)
+				}
+				db.Where(whereString, numbers)
+			} else {
+				db.Where(whereString, value)
 			}
 		}
 
