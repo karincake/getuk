@@ -48,14 +48,18 @@ func optionString(col, option, tableNameEscapeChar string, value interface{}) (w
 		symbol = "<>"
 	case "between":
 		symbol = "BETWEEN"
-	case "in":
+	case "in-string":
+		symbol = "IN"
+	case "in-int":
+		symbol = "IN"
+	case "in-float":
 		symbol = "IN"
 	}
 
 	if symbol == "BETWEEN" {
 		whereString = fmt.Sprintf("%s%s%s %s ? AND ?", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
 	} else if symbol == "IN" {
-		whereString = fmt.Sprintf("%s%s%s %s ?", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
+		whereString = fmt.Sprintf("%s%s%s %s (?)", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
 	} else {
 		whereString = fmt.Sprintf("%s%s%s %s ?", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
 	}
