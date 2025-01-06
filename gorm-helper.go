@@ -45,6 +45,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			}
 
 			// skip
+			raw := false
 			skip := false
 			refSource := iTF.Name
 			ghTagsRaw := iTF.Tag.Get("gormhelper")
@@ -60,6 +61,8 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 					if vals[0] == "skip" {
 						skip = true
 						break
+					} else if vals[0] == "raw" {
+						raw = true
 					}
 				}
 			}
@@ -74,8 +77,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			}
 
 			// check field value
-			lastITF := reflect.TypeOf(iVF)
-			if !iVF.IsValid() || iVF.IsZero() || (lastITF.Kind() == reflect.Ptr && iVF.IsNil()) {
+			if !iVF.IsValid() || iVF.IsZero() {
 				continue
 			}
 
@@ -102,12 +104,19 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			}
 
 			// add where query
-			whereString, value := optionString(refSource, vOpt, tableNameEscapeChar, iVF.Interface())
+			whereString, value := optionString(refSource, vOpt, tableNameEscapeChar, iVF.Interface(), raw)
 			if vOpt == "between" {
-				valueString := iVF.String()
-				values := strings.Split(valueString, ",")
-				if len(values) == 2 {
-					db.Where(whereString, values[0], values[1])
+				theType := iVF.Type().String()
+				if theType == "string" {
+					valueString := iVF.String()
+					values := strings.Split(valueString, "|")
+					if len(values) == 2 {
+						db.Where(whereString, values[0], values[1])
+					}
+				} else if iVF.Kind() == reflect.Slice {
+					if iVF.Len() == 2 {
+						db.Where(whereString, iVF.Index(0), iVF.Index(1))
+					}
 				}
 			} else if vOpt == "in-string" {
 				db.Where(whereString, strings.Split(value.(string), ","))
