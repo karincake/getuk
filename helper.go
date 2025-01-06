@@ -2,6 +2,7 @@ package getuk
 
 import (
 	"fmt"
+	"strings"
 )
 
 // just local functions, avoid import if it is simple
@@ -22,6 +23,11 @@ func stringInSlice(s string, a []string) bool {
 //
 //	[]string{"=", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right"}
 func optionString(col, option, tableNameEscapeChar string, value interface{}) (whereString string, valueFinal interface{}) {
+	cols := strings.Split(col, ".")
+	for idx := range cols {
+		cols[idx] = tableNameEscapeChar + cols[idx] + tableNameEscapeChar
+	}
+
 	symbol := "="
 	valueFinal = value
 	switch option {
@@ -57,11 +63,11 @@ func optionString(col, option, tableNameEscapeChar string, value interface{}) (w
 	}
 
 	if symbol == "BETWEEN" {
-		whereString = fmt.Sprintf("%s%s%s %s ? AND ?", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
+		whereString = strings.Join(cols, ".") + " BETWEEN ? AND ?"
 	} else if symbol == "IN" {
-		whereString = fmt.Sprintf("%s%s%s %s (?)", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
+		whereString = strings.Join(cols, ".") + " IN (?)"
 	} else {
-		whereString = fmt.Sprintf("%s%s%s %s ?", tableNameEscapeChar, col, tableNameEscapeChar, symbol)
+		whereString = strings.Join(cols, ".") + " = ?"
 	}
 	return
 }
