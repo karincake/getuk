@@ -18,14 +18,16 @@ func stringInSlice(s string, a []string) bool {
 }
 
 // create where string e.g "Column" <= ? for where gorm
-//
-// allowed option, the default is without like and between
-//
-//	[]string{"=", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right"}
-func optionString(col, option, tableNameEscapeChar string, value interface{}) (whereString string, valueFinal interface{}) {
-	cols := strings.Split(col, ".")
-	for idx := range cols {
-		cols[idx] = tableNameEscapeChar + cols[idx] + tableNameEscapeChar
+func optionString(col, option, tableNameEscapeChar string, value interface{}, rawStatus bool) (whereString string, valueFinal interface{}) {
+	var refSource string
+	if rawStatus {
+		refSource = col
+	} else {
+		cols := strings.Split(col, ".")
+		for idx := range cols {
+			cols[idx] = tableNameEscapeChar + cols[idx] + tableNameEscapeChar
+		}
+		refSource = strings.Join(cols, ".")
 	}
 
 	symbol := "="
@@ -63,11 +65,13 @@ func optionString(col, option, tableNameEscapeChar string, value interface{}) (w
 	}
 
 	if symbol == "BETWEEN" {
-		whereString = strings.Join(cols, ".") + " BETWEEN ? AND ?"
+		whereString = refSource + " BETWEEN ? AND ?"
 	} else if symbol == "IN" {
-		whereString = strings.Join(cols, ".") + " IN (?)"
+		whereString = refSource + " IN (?)"
+	} else if symbol == "LIKE" {
+		whereString = refSource + " LIKE (?)"
 	} else {
-		whereString = strings.Join(cols, ".") + " = ?"
+		whereString = refSource + " = ?"
 	}
 	return
 }
