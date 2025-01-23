@@ -18,10 +18,6 @@ func stringInSlice(s string, a []string) bool {
 }
 
 // create where string e.g "Column" <= ? for where gorm
-//
-// allowed option, the default is without like and between
-//
-//	[]string{"=", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right"}
 func optionString(col, option, tableNameEscapeChar string, value interface{}, rawStatus bool) (whereString string, valueFinal interface{}) {
 	var refSource string
 	if rawStatus {
@@ -72,6 +68,8 @@ func optionString(col, option, tableNameEscapeChar string, value interface{}, ra
 		whereString = refSource + " BETWEEN ? AND ?"
 	} else if symbol == "IN" {
 		whereString = refSource + " IN (?)"
+	} else if symbol == "LIKE" {
+		whereString = refSource + " LIKE (?)"
 	} else {
 		whereString = refSource + " = ?"
 	}
