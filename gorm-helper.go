@@ -11,6 +11,7 @@ import (
 
 // Filters based on query parameters
 func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
+	var opts = []string{"eq", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right", "between", "in-string", "in-int", "in-float"}
 	return func(db *gorm.DB) *gorm.DB {
 		// rt := reflect.TypeOf(input)
 		// if rt.Kind() != reflect.Struct {
@@ -47,6 +48,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			// skip
 			raw := false
 			skip := false
+			allowZero := false
 			refSource := iTF.Name
 			ghTagsRaw := iTF.Tag.Get("gormhelper")
 			ghTags := strings.Split(ghTagsRaw, ";")
@@ -61,6 +63,8 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 					if vals[0] == "skip" {
 						skip = true
 						break
+					} else if vals[0] == "allowZero" {
+						allowZero = true
 					} else if vals[0] == "raw" {
 						raw = true
 					}
@@ -77,7 +81,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			}
 
 			// check field value
-			if !iVF.IsValid() || iVF.IsZero() {
+			if !iVF.IsValid() || (iVF.IsZero() && !allowZero) {
 				continue
 			}
 
@@ -94,7 +98,6 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 					// nothing to do if its invalid pointer
 				}
 			}
-			opts := []string{"eq", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right", "between", "in-string", "in-int", "in-float"}
 			if ok := stringInSlice(vOpt, opts); !ok {
 				db.AddError(fmt.Errorf("field %s: opt undefined", iTF.Name))
 			}
