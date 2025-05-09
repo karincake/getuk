@@ -73,6 +73,11 @@ func optionString(col, option, tableNameEscapeChar string, value interface{}, ra
 	} else {
 		whereString = refSource + " = ?"
 	}
+
+	if str, ok := valueFinal.(string); ok {
+		valueFinal = strings.TrimSpace(str)
+	}
+
 	return
 }
 
