@@ -164,10 +164,22 @@ func Paginate(input interface{}, p *Pagination) func(db *gorm.DB) *gorm.DB {
 		if iV.Kind() != reflect.Struct {
 			panic("input must be a struct")
 		}
+
+		// try nested Pagination struct first
+		fPag := iV.FieldByName("Pagination")
+		if fPag.IsValid() {
+			for fPag.Kind() == reflect.Pointer {
+				fPag = fPag.Elem()
+			}
+		} else {
+			// fallback: operate directly on the input struct
+			fPag = iV
+		}
 		// field pagination
-		fP := iV.FieldByName("PageNumber")
-		fPS := iV.FieldByName("PageSize")
-		fNP := iV.FieldByName("PageNoLimit")
+		fP := fPag.FieldByName("PageNumber")
+		fPS := fPag.FieldByName("PageSize")
+		fNP := fPag.FieldByName("PageNoLimit")
+
 		if fNP.IsValid() {
 			if fNP.Type().Kind() == reflect.Bool && bool(fNP.Interface().(bool)) {
 				return db
