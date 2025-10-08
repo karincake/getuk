@@ -33,6 +33,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 		}
 
 		iT := iV.Type() // input type
+
 		for i := 0; i < iV.NumField(); i++ {
 			iTF := iT.Field(i) // input type of the current field
 			opt := iTF.Name
@@ -58,6 +59,15 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 					if vals[0] == "refsource" {
 						refSource = vals[1]
 						break
+					} else if vals[0] == "searchColumns" {
+						tmp := iV.Field(i)
+						searchKeyword := tmp.String()
+						if vals[1] != "" && searchKeyword != "" {
+							searchColumns := splitString(vals[1], ",")
+							searchQuery := searchhQueryBuilder(searchColumns, searchKeyword, dialectorName)
+							db.Where(searchQuery)
+							skip = true
+						}
 					}
 				} else {
 					if vals[0] == "skip" {
@@ -346,4 +356,33 @@ func FlatJoinProc(db *gorm.DB, selectStr *string, opt FlatJoinOpt) *gorm.DB { //
 	}
 
 	return db.Joins(fmt.Sprintf("%v %v%v%v ON %v%v%v.%v%v%v = %v%v%v.%v%v%v %v", opt.Mode, qt, opt.Ref, qt, qt, opt.Src, qt, qt, fSrcFkCol, qt, qt, opt.Ref, qt, qt, fRefCol, qt, clause))
+}
+
+func Sort(sort string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if sort == "" {
+			return db
+		}
+
+		pairs := strings.Split(sort, ",")
+		for _, pair := range pairs {
+			parts := strings.Split(strings.TrimSpace(pair), ":")
+			if len(parts) != 2 {
+				continue // skip invalid format
+			}
+
+			field := strings.TrimSpace(parts[0])
+			direction := strings.ToUpper(strings.TrimSpace(parts[1]))
+
+			if direction != "ASC" && direction != "DESC" {
+				continue
+			}
+
+			field = normalizeColumnName(field)
+
+			db = db.Order(fmt.Sprintf("\"%s\" %s", field, direction))
+		}
+
+		return db
+	}
 }

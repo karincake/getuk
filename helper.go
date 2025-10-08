@@ -3,6 +3,7 @@ package getuk
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // just local functions, avoid import if it is simple
@@ -90,3 +91,61 @@ func optionString(col, option, tableNameEscapeChar string, value interface{}, ra
 // 	}
 // 	return vOpt
 // }
+
+func splitString(s string, sep string) []string {
+	return strings.Split(s, sep)
+}
+
+func searchhQueryBuilder(searchColumns []string, search, dialector string) string {
+	switch dialector {
+	case "postgres":
+		if len(searchColumns) == 1 {
+			return fmt.Sprintf("\"%s\" ILIKE '%%%s%%'", searchColumns[0], search)
+		}
+
+		var parts []string
+		for _, col := range searchColumns {
+			parts = append(parts, fmt.Sprintf("\"%s\" ILIKE '%%%s%%'", col, search))
+		}
+		return strings.Join(parts, " OR ")
+	case "mysql":
+		search = strings.ToLower(search)
+		if len(searchColumns) == 1 {
+			return fmt.Sprintf("LOWER(%s) LIKE '%%%s%%'", searchColumns[0], search)
+		}
+
+		var parts []string
+		for _, col := range searchColumns {
+			parts = append(parts, fmt.Sprintf("LOWER(%s) LIKE '%%%s%%'", col, search))
+		}
+		return strings.Join(parts, " OR ")
+	default:
+		return ""
+	}
+}
+
+func normalizeColumnName(input string) string {
+	if input == "" {
+		return input
+	}
+
+	input = strings.ReplaceAll(input, "-", "_")
+
+	runes := []rune(input)
+	var out []rune
+	upperNext := true
+	for _, r := range runes {
+		if r == '_' {
+			out = append(out, r)
+			upperNext = true
+			continue
+		}
+		if upperNext {
+			out = append(out, unicode.ToUpper(r))
+			upperNext = false
+		} else {
+			out = append(out, r)
+		}
+	}
+	return string(out)
+}
