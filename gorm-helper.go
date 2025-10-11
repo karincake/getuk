@@ -386,3 +386,26 @@ func Sort(sort string) func(db *gorm.DB) *gorm.DB {
 		return db
 	}
 }
+
+func Preload(input string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if input == "" {
+			return db
+		}
+		result := []string{}
+		parts := strings.Split(input, ",")
+		for _, p := range parts {
+			subParts := strings.Split(p, "-")
+			for i := range subParts {
+				subParts[i] = kebabToPascal(subParts[i])
+			}
+			result = append(result, strings.Join(subParts, "."))
+		}
+
+		for _, p := range result {
+			db = db.Preload(p)
+		}
+
+		return db
+	}
+}

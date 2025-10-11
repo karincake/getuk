@@ -149,3 +149,15 @@ func normalizeColumnName(input string) string {
 	}
 	return string(out)
 }
+
+func kebabToPascal(input string) string {
+	parts := strings.Split(input, "-")
+	for i, p := range parts {
+		if len(p) > 0 {
+			r := []rune(p)
+			r[0] = []rune(strings.ToUpper(string(r[0])))[0]
+			parts[i] = string(r)
+		}
+	}
+	return strings.Join(parts, "")
+}
