@@ -2,6 +2,7 @@ package getuk
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -59,20 +60,28 @@ func optionString(col, option, tableNameEscapeChar string, value interface{}, ra
 		symbol = "BETWEEN"
 	case "in-string":
 		symbol = "IN"
+	case "not-in-string":
+		symbol = "NOT IN"
 	case "in-int":
 		symbol = "IN"
+	case "not-in-int":
+		symbol = "NOT IN"
 	case "in-float":
 		symbol = "IN"
+	case "not-in-float":
+		symbol = "NOT IN"
 	}
+
+	ins := []string{"IN", "NOT IN"}
 
 	if symbol == "BETWEEN" {
 		whereString = refSource + " BETWEEN ? AND ?"
-	} else if symbol == "IN" {
-		whereString = refSource + " IN (?)"
+	} else if slices.Contains(ins, symbol) {
+		whereString = refSource + " " + symbol + " (?)"
 	} else if symbol == "LIKE" {
 		whereString = refSource + " LIKE (?)"
 	} else {
-		whereString = refSource + " = ?"
+		whereString = refSource + " " + symbol + " ?"
 	}
 
 	if str, ok := valueFinal.(string); ok {

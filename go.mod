@@ -1,6 +1,6 @@
 module github.com/karincake/getuk
 
-go 1.19
+go 1.21
 
 require gorm.io/gorm v1.25.2
 
