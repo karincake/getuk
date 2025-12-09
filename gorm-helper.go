@@ -11,7 +11,10 @@ import (
 
 // Filters based on query parameters
 func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
-	var opts = []string{"eq", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right", "between", "in-string", "in-int", "in-float"}
+	var opts = []string{
+		"eq", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right", "between",
+		"in-string", "not-in-string", "in-int", "not-in-int", "in-float", "not-in-float",
+	}
 	return func(db *gorm.DB) *gorm.DB {
 		// rt := reflect.TypeOf(input)
 		// if rt.Kind() != reflect.Struct {
