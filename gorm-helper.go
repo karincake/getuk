@@ -39,13 +39,18 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 
 		for i := 0; i < iV.NumField(); i++ {
 			iTF := iT.Field(i) // input type of the current field
+			if iTF.Anonymous {
+				db = db.Scopes(Filter(iV.Field(i).Interface()))
+				continue
+			}
+
 			opt := iTF.Name
 			if len(iTF.Name) >= 4 {
 				opt = iTF.Name[len(iTF.Name)-4:]
 			}
 
-			// skip option and pagination related
-			if opt == "_Opt" || iTF.Name == "PageNumber" || iTF.Name == "PageSize" || iTF.Name == "PageNoLimit" {
+			// skip option and reserved words
+			if opt == "_Opt" || iTF.Name == "Includes" || iTF.Name == "Sort" || iTF.Name == "Pagination" || iTF.Name == "PageNumber" || iTF.Name == "PageSize" || iTF.Name == "PageNoLimit" {
 				continue
 			}
 
@@ -63,8 +68,14 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 						refSource = vals[1]
 						break
 					} else if vals[0] == "searchColumns" {
-						tmp := iV.Field(i)
-						searchKeyword := tmp.String()
+						iVF := iV.Field(i)
+						for iVF.Kind() == reflect.Ptr {
+							iVF = iVF.Elem()
+						}
+						if iVF.Kind() == reflect.Invalid {
+							continue
+						}
+						searchKeyword := iVF.String()
 						if vals[1] != "" && searchKeyword != "" {
 							searchColumns := splitString(vals[1], ",")
 							searchQuery := searchhQueryBuilder(searchColumns, searchKeyword, dialectorName)
