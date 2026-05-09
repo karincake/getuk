@@ -146,7 +146,8 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 					}
 				}
 			} else if vOpt == "in-string" {
-				db.Where(whereString, strings.Split(value.(string), ","))
+				// use reflect.Value.String() so named types whose underlying type is string also work
+				db.Where(whereString, strings.Split(reflect.ValueOf(value).String(), ","))
 			} else if vOpt == "in-int" {
 				strNumbers := strings.Split(value.(string), ",")
 				numbers := make([]int, len(strNumbers))
@@ -401,7 +402,7 @@ func Sort(sort string) func(db *gorm.DB) *gorm.DB {
 	}
 }
 
-func Preload(input string) func(db *gorm.DB) *gorm.DB {
+func Preload(input string, opts ...map[string]map[string]any) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		if input == "" {
 			return db
@@ -417,7 +418,14 @@ func Preload(input string) func(db *gorm.DB) *gorm.DB {
 		}
 
 		for _, p := range result {
-			db = db.Preload(p)
+			var filter any
+			if len(opts) > 0 {
+				val, ok := opts[0][p]
+				if ok {
+					filter = val
+				}
+			}
+			db = db.Preload(p, filter)
 		}
 
 		return db
