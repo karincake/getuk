@@ -394,8 +394,12 @@ func Sort(sort string) func(db *gorm.DB) *gorm.DB {
 			}
 
 			field = normalizeColumnName(field)
-
-			db = db.Order(fmt.Sprintf("\"%s\" %s", field, direction))
+			if db.Dialector.Name() == "postgres" {
+				field = fmt.Sprintf("\"%s\" %s", field, direction)
+			} else {
+				field = fmt.Sprintf("`%s` %s", field, direction)
+			}
+			db = db.Order(field)
 		}
 
 		return db
