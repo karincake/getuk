@@ -15,6 +15,9 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 		"eq", "lt", "gt", "lte", "gte", "ne", "left", "mid", "right", "between",
 		"in-string", "not-in-string", "in-int", "not-in-int", "in-float", "not-in-float",
 	}
+	var reservedWords = []string{
+		"_Opt", "Includes", "Sort", "Pagination", "PageNumber", "PageSize", "PageNoLimit", "NilFor",
+	}
 	return func(db *gorm.DB) *gorm.DB {
 		// rt := reflect.TypeOf(input)
 		// if rt.Kind() != reflect.Struct {
@@ -37,6 +40,29 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 
 		iT := iV.Type() // input type
 
+		// process NilFor: add IS NULL conditions for each listed column
+		if nf := iV.FieldByName("NilFor"); nf.IsValid() {
+			for nf.Kind() == reflect.Ptr {
+				nf = nf.Elem()
+			}
+			if nf.IsValid() && nf.Kind() == reflect.String && nf.String() != "" {
+				columns := strings.Split(nf.String(), ",")
+				for _, col := range columns {
+					col = strings.TrimSpace(col)
+					if col == "" {
+						continue
+					}
+					if !iV.FieldByName(col).IsValid() {
+						continue
+					}
+					if stringInSlice(col, reservedWords) {
+						continue
+					}
+					db.Where(fmt.Sprintf("%v%v%v IS NULL", tableNameEscapeChar, col, tableNameEscapeChar))
+				}
+			}
+		}
+
 		for i := 0; i < iV.NumField(); i++ {
 			iTF := iT.Field(i) // input type of the current field
 			if iTF.Anonymous {
@@ -50,7 +76,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			}
 
 			// skip option and reserved words
-			if opt == "_Opt" || iTF.Name == "Includes" || iTF.Name == "Sort" || iTF.Name == "Pagination" || iTF.Name == "PageNumber" || iTF.Name == "PageSize" || iTF.Name == "PageNoLimit" {
+			if stringInSlice(opt, reservedWords) {
 				continue
 			}
 
@@ -128,6 +154,11 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 
 			if iTF.Type.String() == "*[]string" {
 				vOpt = "in"
+			}
+
+			// NilFor is handled before the loop; skip it here
+			if iTF.Name == "NilFor" {
+				continue
 			}
 
 			// add where query
