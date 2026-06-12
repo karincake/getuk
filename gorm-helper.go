@@ -16,7 +16,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 		"in-string", "not-in-string", "in-int", "not-in-int", "in-float", "not-in-float",
 	}
 	var reservedWords = []string{
-		"_Opt", "Includes", "Sort", "Pagination", "PageNumber", "PageSize", "PageNoLimit", "NilFor",
+		"Includes", "Sort", "Pagination", "PageNumber", "PageSize", "PageNoLimit", "NilFor",
 	}
 	return func(db *gorm.DB) *gorm.DB {
 		// rt := reflect.TypeOf(input)
@@ -76,7 +76,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 			}
 
 			// skip option and reserved words
-			if stringInSlice(opt, reservedWords) {
+			if opt == "_Opt" || stringInSlice(iTF.Name, reservedWords) {
 				continue
 			}
 
@@ -167,7 +167,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 				theType := iVF.Type().String()
 				if theType == "string" {
 					valueString := iVF.String()
-					values := strings.Split(valueString, "|")
+					values := strings.Split(valueString, ",")
 					if len(values) == 2 {
 						db.Where(whereString, values[0], values[1])
 					}
@@ -176,10 +176,10 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 						db.Where(whereString, iVF.Index(0), iVF.Index(1))
 					}
 				}
-			} else if vOpt == "in-string" {
+			} else if vOpt == "in-string" || vOpt == "not-in-string" {
 				// use reflect.Value.String() so named types whose underlying type is string also work
 				db.Where(whereString, strings.Split(reflect.ValueOf(value).String(), ","))
-			} else if vOpt == "in-int" {
+			} else if vOpt == "in-int" || vOpt == "not-in-int" {
 				strNumbers := strings.Split(value.(string), ",")
 				numbers := make([]int, len(strNumbers))
 				for idx := range strNumbers {
@@ -190,7 +190,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 					numbers = append(numbers, number)
 				}
 				db.Where(whereString, numbers)
-			} else if vOpt == "in-float" {
+			} else if vOpt == "in-float" || vOpt == "no-in-float" {
 				strNumbers := strings.Split(value.(string), ",")
 				numbers := make([]float64, len(strNumbers))
 				for idx := range strNumbers {
