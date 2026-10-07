@@ -58,7 +58,7 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 					if stringInSlice(col, reservedWords) {
 						continue
 					}
-					db.Where(fmt.Sprintf("%v%v%v IS NULL", tableNameEscapeChar, col, tableNameEscapeChar))
+					db = db.Where(fmt.Sprintf("%v%v%v IS NULL", tableNameEscapeChar, col, tableNameEscapeChar))
 				}
 			}
 		}
@@ -147,6 +147,9 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 				} else {
 					// nothing to do if its invalid pointer
 				}
+			}
+			if vOpt == "" {
+				vOpt = "eq"
 			}
 			if ok := stringInSlice(vOpt, opts); !ok {
 				db.AddError(fmt.Errorf("field %s: opt undefined", iTF.Name))
