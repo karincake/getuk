@@ -123,3 +123,13 @@ result := DB.
 	Select(selectStr).
     Scan(&data);
 ```
+
+### SQL Injection Protection
+Enabled by default. While enabled:
+- the keyword of a `gormhelper:"searchColumns=..."` field is bound as a query parameter instead of being written into the SQL string
+- `Sort` only accepts plain column names (letters, digits, `_` and `.`); any other field is dropped
+
+```go
+    gh.SetSQLInjectionProtection(false) // legacy behaviour, unsafe for user input
+    gh.SQLInjectionProtection()         // reports the current state
+```
