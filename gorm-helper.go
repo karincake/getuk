@@ -104,8 +104,10 @@ func Filter(input interface{}) func(db *gorm.DB) *gorm.DB {
 						searchKeyword := iVF.String()
 						if vals[1] != "" && searchKeyword != "" {
 							searchColumns := splitString(vals[1], ",")
-							searchQuery := searchhQueryBuilder(searchColumns, searchKeyword, dialectorName)
-							db.Where(searchQuery)
+							searchQuery, searchValues := searchhQueryBuilder(searchColumns, searchKeyword, dialectorName)
+							if searchQuery != "" {
+								db.Where(searchQuery, searchValues...)
+							}
 							skip = true
 						}
 					}
@@ -428,6 +430,9 @@ func Sort(sort string) func(db *gorm.DB) *gorm.DB {
 			}
 
 			field = normalizeColumnName(field)
+			if SQLInjectionProtection() && !isSafeIdentifier(field) {
+				continue // skip unsafe field name
+			}
 			if db.Dialector.Name() == "postgres" {
 				field = fmt.Sprintf("\"%s\" %s", field, direction)
 			} else {

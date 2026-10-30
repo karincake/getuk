@@ -105,32 +105,36 @@ func splitString(s string, sep string) []string {
 	return strings.Split(s, sep)
 }
 
-func searchhQueryBuilder(searchColumns []string, search, dialector string) string {
+// build the search condition and its bound values. With protection enabled the
+// keyword is passed as a parameter; otherwise it is interpolated (legacy).
+func searchhQueryBuilder(searchColumns []string, search, dialector string) (string, []interface{}) {
+	protect := SQLInjectionProtection()
+	var parts []string
+	var values []interface{}
 	switch dialector {
 	case "postgres":
-		if len(searchColumns) == 1 {
-			return fmt.Sprintf("\"%s\" ILIKE '%%%s%%'", searchColumns[0], search)
-		}
-
-		var parts []string
 		for _, col := range searchColumns {
-			parts = append(parts, fmt.Sprintf("\"%s\" ILIKE '%%%s%%'", col, search))
+			if protect {
+				parts = append(parts, fmt.Sprintf("\"%s\" ILIKE ?", col))
+				values = append(values, "%"+search+"%")
+			} else {
+				parts = append(parts, fmt.Sprintf("\"%s\" ILIKE '%%%s%%'", col, search))
+			}
 		}
-		return strings.Join(parts, " OR ")
 	case "mysql":
 		search = strings.ToLower(search)
-		if len(searchColumns) == 1 {
-			return fmt.Sprintf("LOWER(%s) LIKE '%%%s%%'", searchColumns[0], search)
-		}
-
-		var parts []string
 		for _, col := range searchColumns {
-			parts = append(parts, fmt.Sprintf("LOWER(%s) LIKE '%%%s%%'", col, search))
+			if protect {
+				parts = append(parts, fmt.Sprintf("LOWER(%s) LIKE ?", col))
+				values = append(values, "%"+search+"%")
+			} else {
+				parts = append(parts, fmt.Sprintf("LOWER(%s) LIKE '%%%s%%'", col, search))
+			}
 		}
-		return strings.Join(parts, " OR ")
 	default:
-		return ""
+		return "", nil
 	}
+	return strings.Join(parts, " OR "), values
 }
 
 func normalizeColumnName(input string) string {
